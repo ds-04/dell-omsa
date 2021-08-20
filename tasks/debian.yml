@@ -36,7 +36,7 @@
       line: 'deb http://linux.dell.com/repo/community/openmanage/930/bionic bionic main'
       path: /etc/apt/sources.list.d/linux.dell.com.sources.list
 
-  - name: (Debian) Create directory fro OMSA debs and gpg key
+  - name: (Debian) Create directory for OMSA debs and gpg key
     file:
       path: /root/OMSA
       state: directory
