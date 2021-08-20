@@ -18,10 +18,11 @@
 
 - block:
 
-  - name: (Debian) Install OMSA dependencies - libncurses5, libxslt1.1
+  - name: (Debian) Install gnupg and OMSA dependencies - libncurses5, libxslt1.1
     apt:
       name: "{{ item }}"
     loop:
+      - gnupg
       - libncurses5
       - libxslt1.1
 
