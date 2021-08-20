@@ -1,0 +1,103 @@
+---
+
+#D Simpson 2021, ds-04
+
+#This program is free software; you can redistribute it and/or
+#modify it under the terms of the GNU General Public License
+#as published by the Free Software Foundation; either version 2
+#of the License, or (at your option) any later version.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+- block:
+
+  - name: (Debian) Install OMSA dependencies - libncurses5, libxslt1.1
+    apt:
+      name: "{{ item }}"
+    loop:
+      - libncurses5
+      - libxslt1.1
+
+  - name: (Debian) Setup OMSA sources list
+    lineinfile:
+      create: 'yes'
+      owner: root
+      group: root
+      mode: '0644'
+      line: 'deb http://linux.dell.com/repo/community/openmanage/930/bionic bionic main'
+      path: /etc/apt/sources.list.d/linux.dell.com.sources.list
+
+  - name: (Debian) Create directory fro OMSA debs and gpg key
+    file:
+      path: /root/OMSA
+      state: directory
+
+  - name: (Debian) Download OMSA repo key for apt
+    get_url:
+      url: https://linux.dell.com/repo/pgp_pubkeys/0x1285491434D8786F.asc
+      dest: /root/OMSA/
+      timeout: '20'
+    ignore_errors: 'yes'
+
+  - name: (Debian) Check linux.dell.com 1285491434D8786F in place (/etc/apt/trusted.gpg.d/)
+    stat:
+      path: /etc/apt/trusted.gpg.d/1285491434D8786F.gpg
+    register: stat_result
+
+  - name: (Debian) Name create keyring before extracting key
+    command: gpg --no-default-keyring --keyring /root/OMSA/1285491434D8786F.keyring --import /root/OMSA/0x1285491434D8786F.asc
+    when:
+      - not stat_result.stat.exists
+
+  - name: (Debian) Extract key from keyring
+    shell: gpg --no-default-keyring --keyring /root/OMSA/1285491434D8786F.keyring --export > /root/OMSA/1285491434D8786F.gpg && mv /root/OMSA/1285491434D8786F.gpg /etc/apt/trusted.gpg.d/
+    when:
+      - not stat_result.stat.exists
+
+
+#####START UBUNTU LIBS
+
+  - name: (Debian) Download libraries required by OMSA from ubuntu universe
+    get_url:
+      url: "{{ item }}"
+      dest: /root/OMSA
+      mode: '0700'
+    with_items: "{{ OMSA_debs }}"
+
+  - name: (Debian) Set fact (prepare local Deb paths) for downloaded debs
+    set_fact:
+      output: "{{ OMSA_debs | map('basename') | list }}"
+    loop: "{{ OMSA_debs }}"
+
+  - name: (Debian) Install libraries required by OMSA from ubuntu universe
+    apt:
+      deb: "/root/OMSA/{{ item }}"
+      state: present
+    loop: "{{ output }}"
+
+#####END UBUNTU LIBS
+
+
+  - name: (Debian) Apt update_cache
+    apt:
+      update_cache: 'yes'
+
+  - name: (Debian) Install srvadmin-all
+    package:
+      name: srvadmin-all
+      state: present
+
+  - name: (Debian) Touch /opt/dell/srvadmin/lib64/openmanage/IGNORE_GENERATION
+    file:
+      state: touch
+      path: /opt/dell/srvadmin/lib64/openmanage/IGNORE_GENERATION
+
+  become: "True"
+...
